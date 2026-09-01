@@ -258,7 +258,7 @@ def process_access(
         # I-LOG
         # ====================================================
 
-        if system_key == "I-LOG":
+        if system_key == "I-Log":
 
             ilog_name = user.CompleteName.title()
 
@@ -274,8 +274,8 @@ def process_access(
                 company = user.Company
 
             areadept = (
-                f"{user.Area} - "
-                f"{user.Department}"
+                f"{user.Area.upper()} - "
+                f"{user.Department.upper()}"
             )
 
             userGroup = "User"
@@ -292,9 +292,9 @@ def process_access(
 
                 "Company": company,
 
-                "Area": user.Area,
+                "Area": user.Area.uppper(),
 
-                "Department": user.Department,
+                "Department": user.Department.uppper(),
 
                 "AreaDepartment": areadept,
 
@@ -422,7 +422,7 @@ def process_access(
 
                 "Company": company,
 
-                "Department": user.Department,
+                "Department": user.Department.upper(),
 
                 "ImmediateSuperior": (
                     user.ImmediateSupervisor
@@ -432,7 +432,7 @@ def process_access(
                     user.DepartmentHead
                 ),
 
-                "Area": area,
+                "Area": area.title(),
 
                 "UserGroup": userGroup,
 

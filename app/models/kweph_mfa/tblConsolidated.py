@@ -8,19 +8,18 @@ class Users_MFA(db.Model):
     EmployeeId = db.Column(db.String(50), nullable=True)
     EmployeeName = db.Column(db.String(90), nullable=False)
     EmailAddress = db.Column(db.String(90), nullable=True)
-    Password = db.Column(db.String(30), nullable=False)
+    Password = db.Column(db.String(255), nullable=False)
     SecretKey  = db.Column(db.String(30), nullable=True, unique=True)
     Status = db.Column(db.String(1), nullable=False)
     LoginStatus = db.Column(db.String(50), nullable=False)
 
-    def __init__ (self, OASId, EmployeeId, EmployeeName, EmailAddress, Status):
+    def __init__ (self, OASId, EmployeeId, EmployeeName, EmailAddress, Password, Status):
         self.OASId = OASId
         self.EmployeeId = EmployeeId
         self.EmployeeName = EmployeeName
         self.EmailAddress = EmailAddress
+        self.Password = Password
         self.Status = Status
-       
-
 
     def to_dict(self):
         return {

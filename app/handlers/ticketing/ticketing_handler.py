@@ -1125,6 +1125,8 @@ def processInhouse():
         result = process_access(inhouse, employeeId, emailAddress, OASId, modules, fields_value)
 
         if not result["success"]:
+            print("=== PROCESS ACCESS ERROR ===")
+            print(result)
             return jsonify(result), 400
 
         else:
