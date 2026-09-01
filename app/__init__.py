@@ -93,7 +93,7 @@ def create_app():
 
     # from app.routes.user import user_bp
     CORS(app,
-     resources={r"/*": {"origins": ["http://localhost:5173", "http://127.0.0.1:5173", "https://itoss-uat.kwephilippines.ph", "itossv2.kwephilippines.ph"]}},
+     resources={r"/*": {"origins": ["http://localhost:5173", "http://127.0.0.1:5173", "https://itoss-uat.kwephilippines.ph", "https://itossv2.kwephilippines.ph"]}},
      supports_credentials=True,
      allow_headers=["Content-Type", "Authorization"],
      methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
