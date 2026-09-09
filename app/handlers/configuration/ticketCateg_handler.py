@@ -21,6 +21,7 @@ formatted_date = now_ph.strftime("%Y-%m-%d")
 @token_required
 def fetchAllTicketCateg():
     try:
+        print("here")
         categs = TicketCategory.query.all()
 
         if not categs:

@@ -48,13 +48,31 @@ def approveTicket():
         config = TicketApproverLevel.query.filter(
             TicketApproverLevel.CategoryId == requestType,
             TicketApproverLevel.LevelNo == nextLevel
-        ).first()
+        ).all()
 
         if not config:
             return jsonify({"message": "Approver level configuration not found!"}), 404
         
-        status = config.Description
-        approve.CurrentLevel = config.LevelNo
+
+        for conf in config:
+            if conf.ApproverType == "Dynamic Superior": 
+                if current_user == approve.ISId: 
+                    next_status = conf.Description
+                    next_level = conf.LevelNo
+                    break
+            elif conf.ApproverType == "Dynamic Manager": 
+                if current_user == approve.DHId: 
+                    next_status = conf.Description
+                    next_level = conf.LevelNo
+                    break
+            elif conf.ApproverType == "Specific User": 
+                if current_user == conf.ApproverValue: 
+                    next_status = conf.Description
+                    next_level = conf.LevelNo
+                    break
+        
+        status = next_status
+        approve.CurrentLevel = next_level
         approve.Status = status
 
         #------------------SPECIAL CASE--------------------------
@@ -67,8 +85,8 @@ def approveTicket():
             TicketNumber = ticketno,
             ApprovalLevel= nextLevel,
             ApproverId = current_user,
-            Action = config.Description,
-            Remarks = config.Description
+            Action = next_status,
+            Remarks = next_status
         )
 
         db.session.add(new_history)
@@ -79,7 +97,7 @@ def approveTicket():
             TicketNumber=ticketno,
             EmployeeId=current_user,
             SenderName=current_username,
-            Status=config.Description,
+            Status=next_status,
             Message=remarks
         )
 
@@ -90,7 +108,6 @@ def approveTicket():
         receiver = None
         nextLevelApprover = approve.CurrentLevel + 1
 
-        print(f'next Approver: {nextLevelApprover}')
         configNext = TicketApproverLevel.query.filter(
             TicketApproverLevel.CategoryId == requestType,
             TicketApproverLevel.LevelNo == nextLevelApprover
@@ -117,7 +134,8 @@ def approveTicket():
 
             real_receiver = receiver
             if receiver:
-                receiver = "reginamaye.banadera@kwe.com"
+                # receiver = "reginamaye.banadera@kwe.com"
+                receiver = real_receiver
                 subject = f"For Approval: ITOSS Request [{formatted_date}]"
                 html = f"""
                     <html>
@@ -126,7 +144,7 @@ def approveTicket():
                         <table width="100%" cellpadding="0" cellspacing="0" style="padding:30px 0;">
                         <tr>
                             <td align="center">
-                            {real_receiver}
+
                             <table width="600" cellpadding="0" cellspacing="0"
                                 style="background:#ffffff; border-radius:10px; overflow:hidden;">
 
@@ -259,6 +277,147 @@ def approveTicket():
 
                 send_email(receiver, subject, html)
 
+        else:
+            receiver = "itsupport.kweph@kwe.com"
+            subject = f"For Processing: ITOSS Request [{formatted_date}]"
+            html = f"""
+                <html>
+                <body style="margin:0; padding:0; background-color:#f4f6f9; font-family:Arial, sans-serif;">
+
+                    <table width="100%" cellpadding="0" cellspacing="0" style="padding:30px 0;">
+                    <tr>
+                        <td align="center">
+                        <table width="600" cellpadding="0" cellspacing="0"
+                            style="background:#ffffff; border-radius:10px; overflow:hidden;">
+
+                            <!-- Header -->
+                            <tr>
+                            <td style="background:#1677ff; padding:20px;">
+                                <h2 style="margin:0; color:#ffffff; font-size:18px;">
+                                IT Support Notification
+                                </h2>
+                            </td>
+                            </tr>
+
+                            <!-- Content -->
+                            <tr>
+                            <td style="padding:25px; color:#333333; font-size:14px; line-height:1.6;">
+
+                                <p>Hello IT Support Team,</p>
+
+                                <p>
+                                This is an automated reminder for a pending request in the
+                                Information Technology Online Support System.
+                                </p>
+
+                                <!-- Request Details -->
+                                <table width="100%" cellpadding="0" cellspacing="0"
+                                    style="margin:20px 0; border:1px solid #f0f0f0; border-radius:8px;">
+
+                                    <tr>
+                                        <td colspan="2"
+                                            style="background:#fafafa; padding:12px 15px; font-weight:bold; font-size:14px;">
+                                            Request Details
+                                        </td>
+                                    </tr>
+
+                                    <tr>
+                                        <td style="padding:12px 15px; width:35%; color:#666;">
+                                            Ticket No.
+                                        </td>
+                                        <td style="padding:12px 15px; font-weight:600;">
+                                            {ticketno}
+                                        </td>
+                                    </tr>
+
+                                    <tr style="background:#fcfcfc;">
+                                        <td style="padding:12px 15px; color:#666;">
+                                            Request Type
+                                        </td>
+                                        <td style="padding:12px 15px;">
+                                            {requestName}
+                                        </td>
+
+                                    </tr>
+                                        <td style="padding:12px 15px; color:#666;">
+                                            Requestor
+                                        </td>
+                                        <td style="padding:12px 15px;">
+                                            {requestorName}
+                                        </td>
+                                    <tr>
+
+                                    </tr>
+
+                                    <tr style="background:#fcfcfc;">
+                                        <td style="padding:12px 15px; color:#666;">
+                                            Status
+                                        </td>
+                                        <td style="padding:12px 15px;">
+                                            <span style="
+                                                background:#fff7e6;
+                                                color:#d48806;
+                                                padding:4px 10px;
+                                                border-radius:20px;
+                                                font-size:12px;
+                                                font-weight:bold;
+                                            ">
+                                                {status}
+                                            </span>
+                                        </td>
+                                    </tr>
+
+                                </table>
+
+                                <!-- Highlight -->
+                                <div style="
+                                    background:#f5f8ff;
+                                    border-left:4px solid #1677ff;
+                                    padding:12px;
+                                    margin:20px 0;
+                                ">
+                                    Please log in to the system to review the request details.
+                                </div>
+
+                                <p>
+                                This is a system-generated email. Please do not reply directly
+                                to this message.
+                                </p>
+
+                                <br/>
+
+                                <p>
+                                Regards,<br/>
+                                <b>IT Support Team</b>
+                                </p>
+
+                            </td>
+                            </tr>
+
+                            <!-- Footer -->
+                            <tr>
+                            <td style="
+                                background:#f0f2f5;
+                                padding:15px;
+                                text-align:center;
+                                font-size:12px;
+                                color:#888;
+                            ">
+                                © 2026 Information Technology Online Support System
+                            </td>
+                            </tr>
+
+                        </table>
+
+                        </td>
+                    </tr>
+                    </table>
+
+                </body>
+                </html>
+                """
+
+            send_email(receiver, subject, html)
         return jsonify({"message": "Request successfully approved!"}), 200
     
     except Exception as e:
