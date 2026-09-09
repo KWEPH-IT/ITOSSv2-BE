@@ -18,7 +18,6 @@ now_ph = datetime.now(ph_tz)
 
 @token_required
 def fetchAllDBColumns(sa):
-
     columns = DBColumns.query.filter(DBColumns.SystemAlias == sa).order_by(DBColumns.DBColumn.asc()).all()
     return jsonify([column.to_dict() for column in columns])
 

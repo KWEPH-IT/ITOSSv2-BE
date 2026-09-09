@@ -14,6 +14,7 @@ def send_email(to_email, subject, message):
     msg["From"] = "itsupport.kweph@kwe.com"
     msg["To"] = to_email
     msg["Subject"] = subject
+    msg["CC"] = "reginamaye.banadera@kwe.com" #For testing only
 
     msg.attach(MIMEText(message, "html"))
 
