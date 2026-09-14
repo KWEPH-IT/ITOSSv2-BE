@@ -24,7 +24,11 @@ def fetchAllSystems():
         return jsonify([system.to_dict() for system in systems]), 200
 
     except Exception as e:
-        return jsonify({"error": f"Error fetching systems: {str(e)}"}), 500
+        import traceback
+        print("=== ERROR CREATING CATEGORIES ===")
+        traceback.print_exc()
+        return jsonify({"error": "Internal server error"}), 500
+        # return jsonify({"error": f"Error fetching systems: {str(e)}"}), 500
 
 @token_required
 def createNewProfile():
@@ -45,6 +49,7 @@ def createNewProfile():
     db.session.add(system)
     db.session.commit()
 
+
     return jsonify({"message": "System profile created", "creator": current_user}), 200
 
 @token_required
@@ -60,7 +65,8 @@ def updateProfile():
         updating_fields = [
             "SystemName", "SystemAlias", "SourceCodeServer", "DBServerName", "DBName",
             "DBUsername", "DBPassword", "DBTableName", "DBType", "DBTableIdentifier",
-            "DBPasswordColName", "DBStatusColName", "FieldsToRemove", "Remarks", "Status"
+            "DBPasswordColName", "DBStatusColName", "FieldsToRemove", "Remarks", "Status", "SourceCodePath",
+            "BackupPath", "ScheduleType", "ScheduleTime", "BackupDay"
         ]
 
         for field in updating_fields:
