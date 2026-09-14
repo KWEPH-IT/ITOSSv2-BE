@@ -209,11 +209,11 @@ def get_options():
     value_col = data.get("ValueColumn")
     label_col = data.get("LabelColumn")
 
-    
-
-    
     if table == "vwAtKWE":
         query = text(f"SELECT {value_col} as value, {label_col} as label FROM {table} WHERE Tag = 'Active' order by {label_col} ")
+        engine = db.engines["hris_db"]      # or db.get_engine(bind="hris_db")
+    elif table == "tblConfigArea":
+        query = text(f"SELECT {value_col} as value, {label_col} as label FROM {table} WHERE AreaName != '' order by {label_col} ")
         engine = db.engines["hris_db"]      # or db.get_engine(bind="hris_db")
     else:
         query = text(f"SELECT {value_col} as value, {label_col} as label FROM {table} order by {label_col}")

@@ -20,6 +20,13 @@ class SystemProfile(db.Model):
     DBPasswordColName = db.Column(db.String(20), nullable=True)
     DBStatusColName = db.Column(db.String(20), nullable=True)
     FieldsToRemove = db.Column(db.String(1000), nullable=True)
+
+    SourceCodePath = db.Column(db.String(200), nullable=True)
+    BackupPath = db.Column(db.String(200), nullable=True)
+    ScheduleType = db.Column(db.String(15), nullable=True)
+    ScheduleTime = db.Column(db.Time, nullable=True)
+    BackupDay = db.Column(db.Integer, nullable=True)
+
     Remarks = db.Column(db.String(300), nullable=True)
     Status = db.Column(db.String(1), nullable=False)
     CreatedBy = db.Column(db.String(80), nullable=False)
@@ -59,6 +66,13 @@ class SystemProfile(db.Model):
             "DBPasswordColName": self.DBPasswordColName,
             "DBStatusColName": self.DBStatusColName,
             "FieldsToRemove": self.FieldsToRemove,
+            
+            "SourceCodePath": self.SourceCodePath,
+            "BackupPath": self.BackupPath,
+            "ScheduleType": self.ScheduleType,
+            "ScheduleTime": self.ScheduleTime.isoformat() if self.ScheduleTime else None,
+            "BackupDay": self.BackupDay,
+
             "Remarks": self.Remarks,
             "Status": self.Status,
             "CreatedBy": self.CreatedBy,
