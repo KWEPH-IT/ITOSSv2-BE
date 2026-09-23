@@ -397,12 +397,11 @@ def createTicket():
 
             if receiver:
 
-                receiver = "reginamaye.banadera@kwe.com"
+                receiver = real_receiver
                 subject = f"ITOSS For Approval [{formatted_date}]"
                 html = f"""
                     <html>
                     <body style="margin:0; padding:0; background-color:#f4f6f9; font-family:Arial, sans-serif;">
-                        {real_receiver}
                         <table width="100%" cellpadding="0" cellspacing="0" style="padding:30px 0;">
                         <tr>
                             <td align="center">
@@ -1448,6 +1447,7 @@ def get_DBColumns(system_key):
         SELECT DBColumn, Description
         FROM tblConfigDBColumns
         WHERE SystemAlias = :system AND Description != '' AND Status = 1
+        ORDER BY DBColumn ASC
     """), {"system": system_key}).fetchall()
 
     if not config_rows:
