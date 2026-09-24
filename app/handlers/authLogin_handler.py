@@ -37,28 +37,7 @@ def login():
             ).first()
 
             if user:
-                # token = jwt.encode({
-                #     'user_id': user.id,
-                #     'emp_id': user.EmployeeId,
-                #     'username': itoss_user.EmployeeName,   #  add username
-                #     'iat': datetime.utcnow(),
-                #     'exp': datetime.utcnow() + timedelta(hours=1),
-                #     'iss': 'ITOSSv2',
-                #     'aud': 'itoss-client'
-                # }, current_app.config['SECRET_KEY'], algorithm='HS256')
-
-                # response = jsonify({"message": "Login successful!", "status" : "success", "user":user.EmployeeId})
-                # response.set_cookie(
-                #     key="access_token",
-                #     value =token,
-                #     httponly=True,     # Can't be accessed by JS
-                #     secure=True,       # Only sent over HTTPS ---- False: only for dev
-                #     samesite="None", # Prevents CSRF in most cases
-                #     max_age=10800       # Optional: auto-expire in 1 hour
-                # )
-                # return response, 200
                 
-
                 #FOR MFA
 
                  # Generate session token
@@ -278,12 +257,9 @@ def validate_MFA_token():
                 "message": f"Invalid token: {str(e)}"
             }), 401
 
-        # PHP:
-        # return $payload['userid'] ?? null;
 
         oas_id = payload.get("userid")
 
-        # If your Flask JWT currently uses user_id instead:
         if not oas_id:
             oas_id = payload.get("user_id")
 
@@ -323,11 +299,6 @@ def validate_MFA_token():
         # --------------------------------------------------
         # CREATE ITOSSv2 JWT
         # --------------------------------------------------
-
-        print("========== MFA CALLBACK SUCCESS ==========")
-        print("Frontend URL:", frontend_url)
-        print("Employee ID:", user.EmployeeId)
-        print("RETURNING CUSTOM HTML RESPONSE")
 
         access_token = jwt.encode(
             {
