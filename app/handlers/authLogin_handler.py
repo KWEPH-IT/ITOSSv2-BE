@@ -1,4 +1,4 @@
-from flask import jsonify, request,  current_app, g, redirect
+from flask import jsonify, request,  current_app, g, redirect, session
 from database import db
 from app.models.itoss.tblUsers import Users
 from app.models.kweph_mfa.tblConsolidated import Users_MFA
@@ -89,7 +89,7 @@ def login():
                 ).decode("utf-8")
 
                 system_name = base64.b64encode(
-                    b"ITOSS"
+                    b"ITOSSv2"
                 ).decode("utf-8")
 
                 encrypted_token = base64.b64encode(
@@ -240,3 +240,128 @@ def create_mfa_session(oas_id, token, system_name="ITOSSv2"):
 
     db.session.add(session)
     db.session.commit()
+
+
+
+#-------------------------------------------VALIDATE JWT TOKEN FROM MFA-----------------------------------------------#
+
+def validate_MFA_token():
+    try:
+        frontend_url = os.getenv('FRONT_END_URL')
+        print(frontend_url)
+        JWT_SECRET = base64.b64decode(os.getenv('JWT_SECRET'))
+        token = request.form.get("token", "") 
+
+        if not token:
+            return jsonify({
+                "success": False,
+                "message": "No token received."
+            }), 400
+
+        try:
+            payload = jwt.decode(
+                token,
+                JWT_SECRET,
+                algorithms=["HS256"]
+            )
+
+        except jwt.ExpiredSignatureError:
+            return jsonify({
+                "success": False,
+                "message": "Token has expired."
+            }), 401
+
+        except jwt.InvalidTokenError as e:
+            return jsonify({
+                "success": False,
+                "message": f"Invalid token: {str(e)}"
+            }), 401
+
+        # PHP:
+        # return $payload['userid'] ?? null;
+
+        oas_id = payload.get("userid")
+
+        # If your Flask JWT currently uses user_id instead:
+        if not oas_id:
+            oas_id = payload.get("user_id")
+
+        if not oas_id:
+            return jsonify({
+                "success": False,
+                "message": "Token is valid, but no OASId found."
+            }), 401
+
+
+        session["OASId"] = oas_id
+
+         # --------------------------------------------------
+        # GET ITOSS USER
+        # --------------------------------------------------
+
+        user = Users_MFA.query.filter(
+            Users_MFA.OASId == oas_id
+        ).first()
+
+        if not user:
+            return jsonify({
+                "success": False,
+                "message": "ITOSS user not found."
+            }), 404
+
+        itoss_user = Users.query.filter(
+            Users.EmployeeId == user.EmployeeId
+        ).first()
+
+        if not itoss_user:
+            return jsonify({
+                "success": False,
+                "message": "ITOSS user does not exist."
+            }), 404
+
+        # --------------------------------------------------
+        # CREATE ITOSSv2 JWT
+        # --------------------------------------------------
+
+        access_token = jwt.encode(
+            {
+                "user_id": user.id,
+                "emp_id": user.EmployeeId,
+                "username": itoss_user.EmployeeName,
+                "iat": datetime.utcnow(),
+                "exp": datetime.utcnow() + timedelta(hours=1),
+                "iss": "ITOSSv2",
+                "aud": "itoss-client"
+            },
+            current_app.config["SECRET_KEY"],
+            algorithm="HS256"
+        )
+
+        # --------------------------------------------------
+        # SET HTTPONLY COOKIE
+        # --------------------------------------------------
+        
+        response = redirect(
+            f"{frontend_url}/mfa-callback?status=success"
+            f"&user={user.EmployeeId}"
+        )
+
+        response.set_cookie(
+            key="access_token",
+            value=access_token,
+            httponly=True,
+            secure=True,
+            samesite="None",
+            max_age=3600
+        )
+
+        return response, 200
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+
+        return jsonify({
+            "success": False,
+            "message": str(e)
+        }), 500
