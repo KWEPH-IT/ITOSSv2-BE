@@ -1,4 +1,4 @@
-from flask import jsonify, request,  current_app, g, redirect, session
+from flask import jsonify, request,  current_app, g, redirect, session, Response
 from database import db
 from app.models.itoss.tblUsers import Users
 from app.models.kweph_mfa.tblConsolidated import Users_MFA
@@ -250,7 +250,6 @@ def create_mfa_session(oas_id, token, system_name="ITOSSv2"):
 def validate_MFA_token():
     try:
         frontend_url = os.getenv('FRONT_END_URL')
-        print(frontend_url)
         JWT_SECRET = base64.b64decode(os.getenv('JWT_SECRET'))
         token = request.form.get("token", "") 
 
@@ -325,6 +324,11 @@ def validate_MFA_token():
         # CREATE ITOSSv2 JWT
         # --------------------------------------------------
 
+        print("========== MFA CALLBACK SUCCESS ==========")
+        print("Frontend URL:", frontend_url)
+        print("Employee ID:", user.EmployeeId)
+        print("RETURNING CUSTOM HTML RESPONSE")
+
         access_token = jwt.encode(
             {
                 "user_id": user.id,
@@ -343,9 +347,24 @@ def validate_MFA_token():
         # SET HTTPONLY COOKIE
         # --------------------------------------------------
         
-        response = redirect(
-            f"{frontend_url}/mfa-callback?status=success"
-            f"&user={user.EmployeeId}"
+        response = Response(
+            f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Redirecting...</title>
+            </head>
+            <body>
+                <script>
+                    window.location.replace(
+                        "{frontend_url}/mfa-callback?status=success&user={user.EmployeeId}"
+                    );
+                </script>
+            </body>
+            </html>
+            """,
+            status=200,
+            mimetype="text/html"
         )
 
         response.set_cookie(
@@ -357,7 +376,7 @@ def validate_MFA_token():
             max_age=3600
         )
 
-        return response, 200
+        return response
 
     except Exception as e:
         import traceback
