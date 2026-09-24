@@ -7,11 +7,13 @@ from app.services.encryption_services import hash_password
 from sqlalchemy import and_, text
 from app.services.jwt_validator import token_required
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 from urllib.parse import urlencode
 import base64
 import secrets
 import os
 import jwt
+ph_timezone = ZoneInfo("Asia/Manila")
 
 BASE_LOG_FOLDER = "./app/logs"
 
@@ -220,7 +222,7 @@ def generate_session_token():
     return base64.b64encode(token_data).decode("utf-8")
 
 def create_mfa_session(oas_id, token, system_name="ITOSSv2"):
-    expiration_time = datetime.now() + timedelta(hours=1)
+    expiration_time = datetime.now(ph_timezone) + timedelta(hours=1)
 
     formatted_date = expiration_time.strftime("%b %d %Y %I:%M%p")
     formatted_date = formatted_date.replace(" 0", " ")
