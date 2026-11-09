@@ -22,6 +22,7 @@ class SystemProfile(db.Model):
     FieldsToRemove = db.Column(db.String(1000), nullable=True)
 
     SourceCodePath = db.Column(db.String(200), nullable=True)
+    FileBackupPath = db.Column(db.String(200), nullable=True)
     BackupPath = db.Column(db.String(200), nullable=True)
     ScheduleType = db.Column(db.String(15), nullable=True)
     ScheduleTime = db.Column(db.Time, nullable=True)
@@ -33,6 +34,12 @@ class SystemProfile(db.Model):
     DateCreated = db.Column(db.DateTime, default=lambda: datetime.now(philippines_tz))
     ModifiedBy = db.Column(db.String(80), nullable=True)
     DateModified = db.Column(db.String(50), nullable=True)
+
+    folders = db.relationship(
+        "BackupSystemFolder",
+        backref="folder",
+        lazy=True
+    )
 
     def __init__ (self, SystemName, SystemAlias, SourceCodeServer, DBServerName, DBName, DBUsername, DBPassword, DBType, CreatedBy, Status, **kwargs):
         self.SystemName = SystemName
@@ -68,10 +75,22 @@ class SystemProfile(db.Model):
             "FieldsToRemove": self.FieldsToRemove,
             
             "SourceCodePath": self.SourceCodePath,
+            "FileBackupPath": self.FileBackupPath,
             "BackupPath": self.BackupPath,
             "ScheduleType": self.ScheduleType,
             "ScheduleTime": self.ScheduleTime.isoformat() if self.ScheduleTime else None,
             "BackupDay": self.BackupDay,
+
+
+            "folders" : [
+                {   
+                    "SystemNo": d.SystemNo,
+                    "FolderPath": d.FolderPath,
+                    "FileBackupAction": d.FileBackupAction,
+                    "SourceCodeBackupAction": d.SourceCodeBackupAction
+                }
+                for d in self.folders
+            ],
 
             "Remarks": self.Remarks,
             "Status": self.Status,

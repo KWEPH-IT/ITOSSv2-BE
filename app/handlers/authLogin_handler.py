@@ -37,6 +37,24 @@ def login():
             ).first()
 
             if user:
+                token = jwt.encode({
+                    'user_id': user.id,
+                    'emp_id': user.EmployeeId,
+                    'username': itoss_user.EmployeeName,   #  add username
+                    'iat': datetime.utcnow(),
+                    'exp': datetime.utcnow() + timedelta(hours=1),
+                    'iss': 'ITOSSv2',
+                    'aud': 'itoss-client'
+                }, current_app.config['SECRET_KEY'], algorithm='HS256')
+
+                response = jsonify({"message": "Login successful!", "status" : "success", "user":user.EmployeeId})
+                response.set_cookie(
+                    key="access_token",
+                    value =token,
+                    httponly=True,     # Can't be accessed by JS
+                    secure=True,       # Only sent over HTTPS ---- False: only for dev
+                    samesite="None", # Prevents CSRF in most cases
+                    max_age=3600       # Optional: auto-expire in 1 hour
                 
                 #FOR MFA
 
