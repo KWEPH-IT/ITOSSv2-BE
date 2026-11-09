@@ -25,6 +25,7 @@ from datetime import datetime
 import pytz
 import json
 from sqlalchemy import or_
+from html import escape
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -370,10 +371,11 @@ def createTicket():
                 TicketApproverLevel.CategoryId==RequestType,
                 TicketApproverLevel.LevelNo==NextLevel
         ).first()
+
+        receiver = None
+        next_approver = None
         if config:
             approver = config.ApproverType
-            receiver = None
-            next_approver = None
 
             if approver == "Dynamic Superior":
                 next_approver = ISId
@@ -391,7 +393,11 @@ def createTicket():
                 get_Email = vwAtKWE.query.filter_by(EmployeeId = next_approver).first()
                 if get_Email:
                     receiver = get_Email.EmailAddress
-
+            
+        # No next approval level or no valid receiver
+        if not receiver:
+            receiver = "itsupport.kweph@kwe.com"
+            
             real_receiver = receiver
             print(real_receiver)
 
@@ -625,6 +631,14 @@ def createTicket_message():
                     db.session.add(new_file)
         
         db.session.commit()
+
+        # Send email notification
+        notify_to_email(
+            ticket_no=ticket_no,
+            sender_id=current_user,
+            sender_name=current_username,
+            message=mensahe
+        )
 
         return jsonify({
             "message": "Message sent successfully",
@@ -1406,7 +1420,6 @@ def ticketClose():
         }), 500
     
 
-
 def get_dynamic_superior(employee_id):
     return vwAtKWE.query.filter_by(SuperiorId=employee_id).first()
 
@@ -1499,4 +1512,184 @@ def to_bool(value):
     return str(value).strip() in ["1", "true", "True", "Y", "yes"]
 
 
+def notify_to_email(ticket_no, sender_id, sender_name, message):
+    try:
+        ticket = Tickets.query.filter_by(
+            TicketNumber=ticket_no
+        ).first()
 
+        if not ticket:
+            print(f"Ticket {ticket_no} not found.")
+            return
+        
+        requestor_id = ticket.RequestorId
+        requestor = vwAtKWE.query.filter(vwAtKWE.EmployeeId == requestor_id).first()
+        if not requestor:
+            print(f"Requestor not found.")
+            return
+
+        # Determine recipient
+        if str(sender_id) == str(requestor_id):
+            # Requestor sent a message
+            receiver = "itsupport.kweph@kwe.com"
+            subject = f"ITOSS - New Message from Requestor [{ticket_no}]"
+
+            notification_text = (
+                "A new message has been submitted by the requestor. "
+                "Please review and respond to the ticket."
+            )
+
+        else:
+            # Technical / IT Support sent a message
+            receiver = requestor.EmailAddress
+            print(receiver)
+            subject = f"ITOSS - New Reply on Your Ticket [{ticket_no}]"
+
+            notification_text = (
+                "The IT Support Team has posted a new message on your ticket. "
+                "Please log in to the system to view the response."
+            )
+
+        formatted_date = datetime.now().strftime("%B %d, %Y %I:%M %p")
+
+        # Escape user-provided content
+        safe_ticket_no = escape(str(ticket_no))
+        safe_sender_name = escape(str(sender_name))
+        safe_message = escape(str(message)).replace("\n", "<br>")
+
+        html = f"""
+        <html>
+        <body style="margin:0; padding:0; background-color:#f4f6f9; font-family:Arial, sans-serif;">
+            <table width="100%" cellpadding="0" cellspacing="0" style="padding:30px 0;">
+                <tr>
+                    <td align="center">
+
+                        <table width="600" cellpadding="0" cellspacing="0"
+                            style="background:#ffffff; border-radius:10px; overflow:hidden;">
+
+                            <!-- Header -->
+                            <tr>
+                                <td style="background:#1677ff; padding:20px;">
+                                    <h2 style="margin:0; color:#ffffff; font-size:18px;">
+                                        IT Support Notification
+                                    </h2>
+                                </td>
+                            </tr>
+
+                            <!-- Content -->
+                            <tr>
+                                <td style="padding:25px; color:#333333; font-size:14px; line-height:1.6;">
+
+                                    <p>Hello,</p>
+
+                                    <p>{notification_text}</p>
+
+                                    <!-- Ticket Details -->
+                                    <table width="100%" cellpadding="0" cellspacing="0"
+                                        style="margin:20px 0; border:1px solid #f0f0f0; border-radius:8px;">
+
+                                        <tr>
+                                            <td colspan="2"
+                                                style="background:#fafafa; padding:12px 15px; font-weight:bold;">
+                                                Ticket Details
+                                            </td>
+                                        </tr>
+
+                                        <tr>
+                                            <td style="padding:12px 15px; width:35%; color:#666;">
+                                                Ticket No.
+                                            </td>
+                                            <td style="padding:12px 15px; font-weight:600;">
+                                                {safe_ticket_no}
+                                            </td>
+                                        </tr>
+
+                                        <tr style="background:#fcfcfc;">
+                                            <td style="padding:12px 15px; color:#666;">
+                                                Sender
+                                            </td>
+                                            <td style="padding:12px 15px;">
+                                                {safe_sender_name}
+                                            </td>
+                                        </tr>
+
+                                        <tr>
+                                            <td style="padding:12px 15px; color:#666;">
+                                                Date
+                                            </td>
+                                            <td style="padding:12px 15px;">
+                                                {formatted_date}
+                                            </td>
+                                        </tr>
+
+                                        <tr style="background:#fcfcfc;">
+                                            <td colspan="2" style="padding:12px 15px; color:#666;">
+                                                Message
+                                            </td>
+                                        </tr>
+
+                                        <tr>
+                                            <td colspan="2"
+                                                style="padding:15px; background:#ffffff;">
+                                                {safe_message}
+                                            </td>
+                                        </tr>
+
+                                    </table>
+
+                                    <!-- Highlight -->
+                                    <div style="
+                                        background:#f5f8ff;
+                                        border-left:4px solid #1677ff;
+                                        padding:12px;
+                                        margin:20px 0;
+                                    ">
+                                        Please log in to ITOSSv2 to view the ticket details
+                                        and continue the conversation.
+                                    </div>
+
+                                    <p>
+                                        This is a system-generated email. Please do not reply
+                                        directly to this message.
+                                    </p>
+
+                                    <br/>
+
+                                    <p>
+                                        Regards,<br/>
+                                        <b>IT Support Team</b>
+                                    </p>
+
+                                </td>
+                            </tr>
+
+                            <!-- Footer -->
+                            <tr>
+                                <td style="
+                                    background:#f0f2f5;
+                                    padding:15px;
+                                    text-align:center;
+                                    font-size:12px;
+                                    color:#888;
+                                ">
+                                    © 2026 Information Technology Online Support System
+                                </td>
+                            </tr>
+
+                        </table>
+
+                    </td>
+                </tr>
+            </table>
+        </body>
+        </html>
+        """
+
+        send_email(receiver, subject, html)
+
+        print(f"Ticket notification sent successfully to {receiver}")
+
+    except Exception:
+        import traceback
+        print("=== TICKET EMAIL NOTIFICATION ERROR ===")
+        traceback.print_exc()

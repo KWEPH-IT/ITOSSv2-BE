@@ -1,5 +1,6 @@
 from database import db
 from app.models.itoss.tblConfigSystemProfile import SystemProfile
+from app.models.itoss.tblBackupSystemFolder import BackupSystemFolder
 from flask import jsonify, request, g
 from app.services.jwt_validator import token_required
 from datetime import datetime
@@ -28,7 +29,6 @@ def fetchAllSystems():
         print("=== ERROR CREATING CATEGORIES ===")
         traceback.print_exc()
         return jsonify({"error": "Internal server error"}), 500
-        # return jsonify({"error": f"Error fetching systems: {str(e)}"}), 500
 
 @token_required
 def createNewProfile():
@@ -36,6 +36,7 @@ def createNewProfile():
     data = request.json
     # Get username from the decoded token
     current_user = g.payload['username']
+    folders = data.get("folders", [])
     status = "1"
     
     valid_fields = {col.name for col in SystemProfile.__table__.columns}
@@ -47,8 +48,20 @@ def createNewProfile():
 
     system = SystemProfile(**filtered_data, CreatedBy=current_user, Status = status)
     db.session.add(system)
-    db.session.commit()
+    db.session.flush() 
 
+    #Insert new custom folders
+    for folder in folders:
+        new_folder = BackupSystemFolder(
+            SystemNo = system.SystemId,
+            FolderPath = folder.get("FolderPath"),
+            FileBackupAction = folder.get("FileBackupAction"),
+            SourceCodeBackupAction = folder.get("SourceCodeBackupAction")
+        )
+        db.session.add(new_folder)
+
+
+    db.session.commit()
 
     return jsonify({"message": "System profile created", "creator": current_user}), 200
 
@@ -57,6 +70,8 @@ def updateProfile():
     try:
         data = request.get_json()
         SystemId = data.get("SystemId")
+        folders = data.get("folders", [])
+        print(SystemId)
 
         system = SystemProfile.query.get(SystemId)
         if not system:
@@ -65,7 +80,7 @@ def updateProfile():
         updating_fields = [
             "SystemName", "SystemAlias", "SourceCodeServer", "DBServerName", "DBName",
             "DBUsername", "DBPassword", "DBTableName", "DBType", "DBTableIdentifier",
-            "DBPasswordColName", "DBStatusColName", "FieldsToRemove", "Remarks", "Status", "SourceCodePath",
+            "DBPasswordColName", "DBStatusColName", "FieldsToRemove", "Remarks", "Status", "SourceCodePath", "FileBackupPath",
             "BackupPath", "ScheduleType", "ScheduleTime", "BackupDay"
         ]
 
@@ -75,6 +90,20 @@ def updateProfile():
 
         system.ModifiedBy = g.payload['username']
         system.DateModified = datetime.now(ph_tz).strftime("%Y-%m-%d %H:%M:%S") 
+
+        #Delete old custom fields
+        BackupSystemFolder.query.filter(BackupSystemFolder.SystemNo == SystemId).delete(synchronize_session=False)
+
+        #Insert new custom folders
+        for folder in folders:
+            new_folder = BackupSystemFolder(
+                SystemNo = SystemId,
+                FolderPath = folder.get("FolderPath"),
+                FileBackupAction = folder.get("FileBackupAction"),
+                SourceCodeBackupAction = folder.get("SourceCodeBackupAction")
+            )
+            db.session.add(new_folder)
+
         db.session.commit()
 
         return jsonify({"message": "System profile updated successfully"}), 200

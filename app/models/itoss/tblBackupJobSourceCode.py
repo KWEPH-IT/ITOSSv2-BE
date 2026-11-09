@@ -1,11 +1,16 @@
 from database import db
 from datetime import datetime, timedelta
 import pytz
+from datetime import datetime
+
 
 philippines_tz = pytz.timezone('Asia/Manila')
 
-class SystemProfile(db.Model):
-    __tablename__ = 'tblBackJobSourceCode'
+def now_ph():
+    return datetime.now(philippines_tz).replace(tzinfo=None)
+
+class SourceCodeBackup(db.Model):
+    __tablename__ = 'tblBackupJobSourceCode'
     SystemId = db.Column(db.Integer, primary_key=True)
     SystemName = db.Column(db.String(150), nullable=False)
     StartTime = db.Column(db.Time, nullable=True)
@@ -16,7 +21,9 @@ class SystemProfile(db.Model):
     TotalSize = db.Column(db.BigInteger, nullable=False)
     ErrorMessage = db.Column(db.Text, nullable=True)
     LogPath = db.Column(db.Text, nullable=True)
+    LogText = db.Column(db.Text, nullable=True)
     DateCreated = db.Column(db.DateTime, default=lambda: datetime.now(philippines_tz))
+
     
     def __init__ (self, SystemName, StartTime, EndTime, Status, **kwargs):
         self.SystemName = SystemName
@@ -24,18 +31,24 @@ class SystemProfile(db.Model):
         self.EndTime = EndTime
         self.Status = Status
 
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+
 
     def to_dict(self):
         return {
             "SystemId": self.SystemId,
             "SystemName": self.SystemName,
-            "StartTime": self.StartTime,
-            "EndTime": self.EndTime,
+            "StartTime": self.StartTime.isoformat() if self.StartTime else None,
+            "EndTime": self.EndTime.isoformat() if self.EndTime else None,
             "Status": self.Status,
             "FilesCopied": self.FilesCopied,
             "FilesSkipped": self.FilesSkipped,
             "TotalSize": self.TotalSize,
             "ErrorMessage": self.ErrorMessage,
             "LogPath": self.LogPath,
-            "DateCreated": self.DateCreated,
+            "LogText": self.LogText,
+            "DateCreated": self.DateCreated.isoformat() if self.DateCreated else None,
         }
+    
+    

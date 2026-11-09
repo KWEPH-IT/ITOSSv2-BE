@@ -48,7 +48,7 @@ def login():
                     httponly=True,     # Can't be accessed by JS
                     secure=True,       # Only sent over HTTPS ---- False: only for dev
                     samesite="None", # Prevents CSRF in most cases
-                    max_age=10800       # Optional: auto-expire in 1 hour
+                    max_age=3600       # Optional: auto-expire in 1 hour
                 )
                 return response, 200
             else:

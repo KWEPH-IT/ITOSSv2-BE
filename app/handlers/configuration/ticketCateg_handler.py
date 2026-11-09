@@ -122,8 +122,6 @@ def updateTicketCateg():
         custom_fields = data.get("CustomFields", [])
         approvers = data.get("ApproverLevel", [])
         assignments = data.get("Assignment", [])
-        
-        print("Approvers:", approvers)
 
         category = TicketCategory.query.filter(TicketCategory.SystemId == systemId).first()
 
