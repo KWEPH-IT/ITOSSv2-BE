@@ -90,6 +90,7 @@ def create_app():
     from app.routes.config_route import config_bp
     from app.routes.inv_route import inv_bp
     from app.routes.ticket_route import tick_bp
+    from app.routes.backup_route import backup_bp
 
     # from app.routes.user import user_bp
     CORS(app,
@@ -102,6 +103,7 @@ def create_app():
     app.register_blueprint(config_bp, url_prefix="/api")
     app.register_blueprint(inv_bp, url_prefix="/api")
     app.register_blueprint(tick_bp, url_prefix="/api")
+    app.register_blueprint(backup_bp, url_prefix="/api")
     # app.register_blueprint(user_bp, url_prefix="/user")
 
     with app.app_context():
