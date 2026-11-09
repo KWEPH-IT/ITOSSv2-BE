@@ -1550,8 +1550,6 @@ def notify_to_email(ticket_no, sender_id, sender_name, message):
                 "Please log in to the system to view the response."
             )
 
-        formatted_date = datetime.now().strftime("%B %d, %Y %I:%M %p")
-
         # Escape user-provided content
         safe_ticket_no = escape(str(ticket_no))
         safe_sender_name = escape(str(sender_name))
@@ -1618,7 +1616,7 @@ def notify_to_email(ticket_no, sender_id, sender_name, message):
                                                 Date
                                             </td>
                                             <td style="padding:12px 15px;">
-                                                {formatted_date}
+                                                {formatted_datentime}
                                             </td>
                                         </tr>
 
