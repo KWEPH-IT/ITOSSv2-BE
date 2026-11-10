@@ -55,6 +55,7 @@ def login():
                     secure=True,       # Only sent over HTTPS ---- False: only for dev
                     samesite="None", # Prevents CSRF in most cases
                     max_age=3600       # Optional: auto-expire in 1 hour
+                )
                 
                 #FOR MFA
 
