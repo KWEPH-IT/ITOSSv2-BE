@@ -45,10 +45,15 @@ formatted_date = now_ph.strftime("%Y-%m-%d")
 
 formatted_datentime = now_ph.strftime("%Y-%m-%d %H:%M:%S")
 
-UPLOAD_FOLDER = os.path.join(
-    os.getcwd(),
-    "app",
-    "uploads"
+# UPLOAD_FOLDER = os.path.join(
+#     os.getcwd(),
+#     "app",
+#     "uploads"
+# )
+
+UPLOAD_FOLDER = os.getenv(
+    "UPLOAD_FOLDER",
+    "/data/uploads"
 )
 
 UPLOAD_PATH = "uploads"
