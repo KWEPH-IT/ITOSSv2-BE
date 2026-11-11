@@ -1680,7 +1680,7 @@ def notify_to_email(ticket_no, sender_id, sender_name, message):
             return
         
         requestor_id = ticket.RequestorId
-        requestor = vwAtKWE.query.filter(vwAtKWE.EmployeeId == requestor_id).first()
+        requestor = Users_MFA.query.filter(Users_MFA.EmployeeId == requestor_id).first()
         if not requestor:
             print(f"Requestor not found.")
             return

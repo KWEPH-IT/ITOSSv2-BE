@@ -4,11 +4,13 @@ from app.models.itoss.tblConfigTicketCategApprover import TicketApproverLevel
 from app.models.itoss.tblTransTickets import Tickets
 from app.models.itoss.tblTransTicketMessage import TicketMessage
 from app.models.hris.vwAtKWE import vwAtKWE
+from app.models.kweph_mfa.tblConsolidated import Users_MFA
 from flask import jsonify, request, g
 from app.services.jwt_validator import token_required
 from app.services.email_sending import send_email
 from datetime import datetime
 import pytz
+from html import escape
 # Philippine timezone
 ph_tz = pytz.timezone("Asia/Manila")
 
@@ -17,6 +19,7 @@ now_ph = datetime.now(ph_tz)
 
 # Format to YYYY-MM-DD
 formatted_date = now_ph.strftime("%Y-%m-%d")
+formatted_datentime = now_ph.strftime("%Y-%m-%d %H:%M:%S")
 
 @token_required
 def approval_history():
@@ -440,29 +443,32 @@ def declineTicket():
         current_user = g.payload["emp_id"]
         current_username = g.payload["username"]
 
+        approve = Tickets.query.filter(
+            Tickets.TicketNumber == ticketno
+        ).first()
 
-        approve = Tickets.query.filter(Tickets.TicketNumber == ticketno).first()
-        if not approve: 
+        if not approve:
             return jsonify({"message": "No ticket number found!"}), 404
 
         Status = "Declined"
 
-        approve.CurrentLevel =  0
+        approve.CurrentLevel = 0
         approve.Status = Status
 
-        #------------------APPROVAL HISTORY----------------------
+        # ------------------ APPROVAL HISTORY ----------------------
         new_history = TicketApproval(
-            TicketNumber = ticketno,
-            ApprovalLevel= 0,
-            ApproverId = current_user,
-            Action = Status,
-            Remarks = reason
+            TicketNumber=ticketno,
+            ApprovalLevel=0,
+            ApproverId=current_user,
+            Action=Status,
+            Remarks=reason
         )
 
         db.session.add(new_history)
 
-        #------------------MESSAGE-------------------------------
+        # ------------------ MESSAGE -------------------------------
         remarks = f"Declined {ticketno}: {reason}"
+
         new_message = TicketMessage(
             TicketNumber=ticketno,
             EmployeeId=current_user,
@@ -474,13 +480,191 @@ def declineTicket():
         db.session.add(new_message)
         db.session.commit()
 
-        return jsonify({"message": "Request successfully declined!"}), 200
-    
+        # ------------------ EMAIL NOTIFICATION --------------------
+        try:
+            requestor = Users_MFA.query.filter(
+                Users_MFA.EmployeeId == approve.RequestorId
+            ).first()
+
+            if requestor and requestor.EmailAddress:
+
+                receiver = requestor.EmailAddress
+                subject = f"ITOSS - Ticket Declined [{ticketno}]"
+
+                safe_ticket_no = escape(str(ticketno))
+                safe_sender_name = escape(str(current_username))
+                safe_reason = escape(str(reason or "No reason provided.")).replace(
+                    "\n", "<br>"
+                )
+                safe_requestor_name = escape(str(requestor.EmployeeName))
+
+                notification_text = (
+                    "Your ticket request has been declined. "
+                    "Please review the details and remarks below."
+                )
+
+                html = f"""
+                <html>
+                <body style="margin:0; padding:0; background-color:#f4f6f9; font-family:Arial, sans-serif;">
+                    <table width="100%" cellpadding="0" cellspacing="0" style="padding:30px 0;">
+                        <tr>
+                            <td align="center">
+
+                                <table width="600" cellpadding="0" cellspacing="0"
+                                    style="background:#ffffff; border-radius:10px; overflow:hidden;">
+
+                                    <!-- Header -->
+                                    <tr>
+                                        <td style="background:#1677ff; padding:20px;">
+                                            <h2 style="margin:0; color:#ffffff; font-size:18px;">
+                                                IT Support Notification
+                                            </h2>
+                                        </td>
+                                    </tr>
+
+                                    <!-- Content -->
+                                    <tr>
+                                        <td style="padding:25px; color:#333333; font-size:14px; line-height:1.6;">
+
+                                            <p>Hello {safe_requestor_name},</p>
+
+                                            <p>{notification_text}</p>
+
+                                            <!-- Ticket Details -->
+                                            <table width="100%" cellpadding="0" cellspacing="0"
+                                                style="margin:20px 0; border:1px solid #f0f0f0; border-radius:8px;">
+
+                                                <tr>
+                                                    <td colspan="2"
+                                                        style="background:#fafafa; padding:12px 15px; font-weight:bold;">
+                                                        Ticket Details
+                                                    </td>
+                                                </tr>
+
+                                                <tr>
+                                                    <td style="padding:12px 15px; width:35%; color:#666;">
+                                                        Ticket No.
+                                                    </td>
+                                                    <td style="padding:12px 15px; font-weight:600;">
+                                                        {safe_ticket_no}
+                                                    </td>
+                                                </tr>
+
+                                                <tr style="background:#fcfcfc;">
+                                                    <td style="padding:12px 15px; color:#666;">
+                                                        Declined By
+                                                    </td>
+                                                    <td style="padding:12px 15px;">
+                                                        {safe_sender_name}
+                                                    </td>
+                                                </tr>
+
+                                                <tr>
+                                                    <td style="padding:12px 15px; color:#666;">
+                                                        Date
+                                                    </td>
+                                                    <td style="padding:12px 15px;">
+                                                        {formatted_datentime}
+                                                    </td>
+                                                </tr>
+
+                                                <tr style="background:#fcfcfc;">
+                                                    <td colspan="2" style="padding:12px 15px; color:#666;">
+                                                        Status
+                                                    </td>
+                                                </tr>
+
+                                                <tr>
+                                                    <td colspan="2" style="padding:15px; background:#ffffff;">
+                                                        <b style="color:#cf1322;">Declined</b>
+                                                    </td>
+                                                </tr>
+
+                                                <tr style="background:#fcfcfc;">
+                                                    <td colspan="2" style="padding:12px 15px; color:#666;">
+                                                        Remarks
+                                                    </td>
+                                                </tr>
+
+                                                <tr>
+                                                    <td colspan="2" style="padding:15px; background:#ffffff;">
+                                                        {safe_reason}
+                                                    </td>
+                                                </tr>
+
+                                            </table>
+
+                                            <!-- Highlight -->
+                                            <div style="
+                                                background:#f5f8ff;
+                                                border-left:4px solid #1677ff;
+                                                padding:12px;
+                                                margin:20px 0;
+                                            ">
+                                                Please log in to ITOSSv2 to review the ticket
+                                                details and remarks.
+                                            </div>
+
+                                            <p>
+                                                This is a system-generated email. Please do not reply
+                                                directly to this message.
+                                            </p>
+
+                                            <br/>
+
+                                            <p>
+                                                Regards,<br/>
+                                                <b>IT Support Team</b>
+                                            </p>
+
+                                        </td>
+                                    </tr>
+
+                                    <!-- Footer -->
+                                    <tr>
+                                        <td style="
+                                            background:#f0f2f5;
+                                            padding:15px;
+                                            text-align:center;
+                                            font-size:12px;
+                                            color:#888;
+                                        ">
+                                            © 2026 Information Technology Online Support System
+                                        </td>
+                                    </tr>
+
+                                </table>
+
+                            </td>
+                        </tr>
+                    </table>
+                </body>
+                </html>
+                """
+
+                send_email(receiver, subject, html)
+
+                print(f"Decline notification sent successfully to {receiver}")
+
+            else:
+                print(f"Requestor email not found for ticket {ticketno}")
+
+        except Exception:
+            import traceback
+            print("=== DECLINE EMAIL NOTIFICATION ERROR ===")
+            traceback.print_exc()
+
+        return jsonify({
+            "message": "Request successfully declined!"
+        }), 200
+
     except Exception as e:
         db.session.rollback()
+
         import traceback
         print("=== ERROR DECLINING TICKET ===")
         traceback.print_exc()
+
         return jsonify({
             "error": str(e)
         }), 500
