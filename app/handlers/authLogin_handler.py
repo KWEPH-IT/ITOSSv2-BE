@@ -8,6 +8,15 @@ from app.services.jwt_validator import token_required
 from datetime import datetime, timedelta
 import os
 import jwt
+import pytz
+
+# Philippine timezone
+ph_tz = pytz.timezone("Asia/Manila")
+
+# Current PH time
+now_ph = datetime.now(ph_tz)
+
+now_utc = datetime.now(pytz.UTC)
 
 BASE_LOG_FOLDER = "./app/logs"
 
@@ -35,8 +44,8 @@ def login():
                     'user_id': user.id,
                     'emp_id': user.EmployeeId,
                     'username': itoss_user.EmployeeName,   #  add username
-                    'iat': datetime.utcnow(),
-                    'exp': datetime.utcnow() + timedelta(hours=1),
+                    'iat': now_utc,
+                    'exp': now_utc + timedelta(hours=1),
                     'iss': 'ITOSSv2',
                     'aud': 'itoss-client'
                 }, current_app.config['SECRET_KEY'], algorithm='HS256')
@@ -48,7 +57,8 @@ def login():
                     httponly=True,     # Can't be accessed by JS
                     secure=True,       # Only sent over HTTPS ---- False: only for dev
                     samesite="None", # Prevents CSRF in most cases
-                    max_age=3600       # Optional: auto-expire in 1 hour
+                    max_age=3600,    # Optional: auto-expire in 1 hour
+                    path="/"
                 )
                 return response, 200
             else:
