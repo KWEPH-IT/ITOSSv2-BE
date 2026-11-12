@@ -84,7 +84,6 @@ def create_app():
     # This will handle all the db connections
     db.init_app(app)
 
-
     #Import and register blueprints (routes)
     from app.routes.auth import auth_bp
     from app.routes.config_route import config_bp
