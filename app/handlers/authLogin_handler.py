@@ -229,7 +229,7 @@ def generate_session_token():
     return base64.b64encode(token_data).decode("utf-8")
 
 def create_mfa_session(oas_id, token, system_name="ITOSSv2"):
-    expiration_time = datetime.now(ph_timezone) + timedelta(hours=1)
+    expiration_time = datetime.now(now_ph) + timedelta(hours=1)
 
     formatted_date = expiration_time.strftime("%b %d %Y %I:%M%p")
     formatted_date = formatted_date.replace(" 0", " ")
