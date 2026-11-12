@@ -131,11 +131,11 @@ def login():
 
 @token_required
 def protected_token():
-    #print(">>> ROUTE HIT")
-
     return jsonify({
         "message": "Token is valid!",
-        "user": g.payload['username']
+        "authenticated": True,
+        "user": g.payload['username'],
+        "emp_id": g.payload['emp_id']
     }), 200
     
 def test_db_connection():
