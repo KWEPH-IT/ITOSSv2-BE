@@ -45,10 +45,15 @@ formatted_date = now_ph.strftime("%Y-%m-%d")
 
 formatted_datentime = now_ph.strftime("%Y-%m-%d %H:%M:%S")
 
-UPLOAD_FOLDER = os.path.join(
-    os.getcwd(),
-    "app",
-    "uploads"
+# UPLOAD_FOLDER = os.path.join(
+#     os.getcwd(),
+#     "app",
+#     "uploads"
+# )
+
+UPLOAD_FOLDER = os.getenv(
+    "UPLOAD_FOLDER",
+    "/data/uploads"
 )
 
 UPLOAD_PATH = "uploads"
@@ -1680,7 +1685,7 @@ def notify_to_email(ticket_no, sender_id, sender_name, message):
             return
         
         requestor_id = ticket.RequestorId
-        requestor = vwAtKWE.query.filter(vwAtKWE.EmployeeId == requestor_id).first()
+        requestor = Users_MFA.query.filter(Users_MFA.EmployeeId == requestor_id).first()
         if not requestor:
             print(f"Requestor not found.")
             return

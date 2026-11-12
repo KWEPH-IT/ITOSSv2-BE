@@ -1,3 +1,4 @@
+
 FROM python:3.12-slim
 
 WORKDIR /app
@@ -18,12 +19,16 @@ RUN curl https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > /us
     apt-get update && ACCEPT_EULA=Y apt-get install -y msodbcsql17 && \
     rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies first
+# Install Python dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt gunicorn
 
 # Copy project
 COPY . .
+
+# Configure uploads
+ENV UPLOAD_FOLDER=/data/uploads
+RUN mkdir -p /data/uploads
 
 EXPOSE 5000
 
