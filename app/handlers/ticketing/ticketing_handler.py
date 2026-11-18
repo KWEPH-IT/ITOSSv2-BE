@@ -1207,7 +1207,7 @@ def generateFile(ticket_id):
         
         action = (
             "Approved By TSS"
-            if ticket.RequestType == 11
+            if ticket.RequestType == 13
             else "Approved By IT Manager"
         )
 
