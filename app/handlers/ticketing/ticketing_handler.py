@@ -1200,11 +1200,16 @@ def generateFile(ticket_id):
         if not ticket:
             raise Exception("Ticket not found")
         
-        approval = TicketApproval.query.filter_by(
-                TicketNumber=ticket_id,
-                Action="Approved By IT Manager"
-            ).first()
+        action = (
+            "Approved By TSS"
+            if ticket.RequestType == 13
+            else "Approved By IT Manager"
+        )
 
+        approval = TicketApproval.query.filter_by(
+            TicketNumber=ticket_id,
+            Action=action
+        ).first()
        
         fields = ticket.custom_fields[0].CustomFields
 
