@@ -43,7 +43,7 @@ now_ph = datetime.now(ph_tz)
 # Format to YYYY-MM-DD
 formatted_date = now_ph.strftime("%Y-%m-%d")
 
-formatted_datentime = now_ph.strftime("%Y-%m-%d %H:%M:%S")
+formatted_datentime = now_ph.isoformat()
 
 # UPLOAD_FOLDER = os.path.join(
 #     os.getcwd(),
@@ -82,8 +82,9 @@ def fetchTickets():
             submitted = Tickets.Status.ilike("%Submitted%")
             assigned = Tickets.Status == "Assigned"
             processing = Tickets.Status == "On Process"
+            forclosing = Tickets.Status == "For Closing"
 
-            query = query.filter(or_(approved, submitted, assigned, processing))
+            query = query.filter(or_(approved, submitted, assigned, processing, forclosing))
         if ticketno: 
             query = query.filter(Tickets.TicketNumber == ticketno)
 
