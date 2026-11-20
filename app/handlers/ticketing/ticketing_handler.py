@@ -43,7 +43,8 @@ now_ph = datetime.now(ph_tz)
 # Format to YYYY-MM-DD
 formatted_date = now_ph.strftime("%Y-%m-%d")
 
-formatted_datentime = now_ph.isoformat()
+# Remove timezone offset but preserve Philippine local time
+formatted_datentime = now_ph.replace(tzinfo=None)
 
 # UPLOAD_FOLDER = os.path.join(
 #     os.getcwd(),
@@ -640,12 +641,12 @@ def createTicket_message():
         db.session.commit()
 
         # Send email notification
-        # notify_to_email(
-        #     ticket_no=ticket_no,
-        #     sender_id=current_user,
-        #     sender_name=current_username,
-        #     message=mensahe
-        # )
+        notify_to_email(
+            ticket_no=ticket_no,
+            sender_id=current_user,
+            sender_name=current_username,
+            message=mensahe
+        )
 
         return jsonify({
             "message": "Message sent successfully",
