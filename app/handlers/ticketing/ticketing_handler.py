@@ -574,7 +574,7 @@ def update_Ticket():
 
             ticket = Tickets.query.filter(Tickets.TicketNumber == ticket_no).first()
             if ticket:
-                ticket.DateModified = now_ph
+                ticket.DateModified = now_ph()
             
             db.session.commit()
             return jsonify({"message": "Ticket details successfully updated!"}), 200
@@ -873,7 +873,7 @@ def cancelRequest():
             return jsonify({"message": "No ticket number found."}), 404
         
         cancel.Status = "Cancelled Request"
-        cancel.DateModified = now_ph
+        cancel.DateModified = now_ph()
         db.session.commit()
 
         return jsonify({"message": "Cancellation successfull!"}), 200
@@ -907,7 +907,7 @@ def assignTicket():
                 assign.CurrentLevel = assign.CurrentLevel + 1
 
             assign.AssignedTo = assignedToId
-            assign.DateAssigned = now_ph
+            assign.DateAssigned = now_ph()
             assign.Status = status
 
             new_history = TicketApproval(
@@ -1086,12 +1086,12 @@ def confirmAssignedTicket():
         if confirm:
             confirm.Status = "On Process"
             confirm.CurrentLevel = confirm.CurrentLevel + 1
-            confirm.DateModified = now_ph
+            confirm.DateModified = now_ph()
 
 
             if confirm.RequestType == 17 and current_user == 'K656':
                 confirm.AssignedTo = "K656"
-                confirm.DateAssigned = now_ph
+                confirm.DateAssigned = now_ph()
 
             new_history = TicketApproval(
                 TicketNumber = ticket_no,
@@ -1165,7 +1165,7 @@ def processInhouse():
             if ticket:
                 ticket.Status = status
                 ticket.CurrentLevel = ticket.CurrentLevel + 1
-                ticket.DateModified = now_ph
+                ticket.DateModified = now_ph()
             
             new_history = TicketApproval(
                 TicketNumber = ticket_no,
@@ -1396,7 +1396,7 @@ def ticketClose():
 
             ticket.Status = status
             ticket.CurrentLevel = ticket.CurrentLevel + 1
-            ticket.DateModified = now_ph
+            ticket.DateModified = now_ph()
             
             new_history = TicketApproval(
                 TicketNumber = ticketno,
@@ -1784,7 +1784,7 @@ def notify_to_email(ticket_no, sender_id, sender_name, message):
                                                 Date
                                             </td>
                                             <td style="padding:12px 15px;">
-                                                {now_ph}
+                                                {now_ph()}
                                             </td>
                                         </tr>
 
