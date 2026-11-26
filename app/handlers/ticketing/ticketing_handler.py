@@ -22,8 +22,8 @@ from flask import jsonify, request, g
 from werkzeug.utils import secure_filename
 from app.services.jwt_validator import token_required
 from app.services.fill_file import fill_excel_template
+from app.services.utils import now_ph, today_ph
 from datetime import datetime
-import pytz
 import json
 from sqlalchemy import or_
 from html import escape
@@ -34,17 +34,6 @@ TEMPLATE_DIR = os.path.normpath(
     os.path.join(BASE_DIR, "..", "..", "templates")
 )
 
-# Philippine timezone
-ph_tz = pytz.timezone("Asia/Manila")
-
-# Current PH time
-now_ph = datetime.now(ph_tz)
-
-# Format to YYYY-MM-DD
-formatted_date = now_ph.strftime("%Y-%m-%d")
-
-# Remove timezone offset but preserve Philippine local time
-formatted_datentime = now_ph.replace(tzinfo=None)
 
 # UPLOAD_FOLDER = os.path.join(
 #     os.getcwd(),
@@ -217,7 +206,16 @@ def createTicket():
             CustomFields["SystemName"] = systemName
 
         # ---------------- DUPLICATE CHECK ----------------
+        # Block new requests while the user still has tickets "For Closing"
+        for_closing = Tickets.query.filter(
+            Tickets.RequestFor == RequestFor,
+            Tickets.Status == "For Closing"
+        ).first()
 
+        if for_closing:
+            return {"message": "You still have requests marked 'For Closing'. Please close them before creating a new request."}, 400
+
+        # Prevent duplicate submitted request of the same type
         ticket = Tickets.query.filter(
             Tickets.RequestFor == RequestFor,
             Tickets.Status == "Submitted",
@@ -226,6 +224,7 @@ def createTicket():
 
         if ticket:
             return {"message": "Record already exists."}, 400
+        
 
         # ---------------- APPROVAL FLOW ----------------
 
@@ -373,174 +372,174 @@ def createTicket():
 
         # ---------------- SEND EMAIL-----------------
 
-        # NextLevel = current_level +  1
+        NextLevel = current_level +  1
 
-        # config = TicketApproverLevel.query.filter(
-        #         TicketApproverLevel.CategoryId==RequestType,
-        #         TicketApproverLevel.LevelNo==NextLevel
-        # ).first()
+        config = TicketApproverLevel.query.filter(
+                TicketApproverLevel.CategoryId==RequestType,
+                TicketApproverLevel.LevelNo==NextLevel
+        ).first()
 
-        # receiver = None
-        # next_approver = None
-        # if config:
-        #     approver = config.ApproverType
+        receiver = None
+        next_approver = None
+        if config:
+            approver = config.ApproverType
 
-        #     if approver == "Dynamic Superior":
-        #         next_approver = ISId
-        #         get_ISEmail = vwAtKWE.query.filter_by(EmployeeId = next_approver).first()
-        #         if get_ISEmail:
-        #             receiver = get_ISEmail.EmailAddress
+            if approver == "Dynamic Superior":
+                next_approver = ISId
+                get_ISEmail = vwAtKWE.query.filter_by(EmployeeId = next_approver).first()
+                if get_ISEmail:
+                    receiver = get_ISEmail.EmailAddress
 
-        #     elif approver == "Dynamic Manager":
-        #         next_approver = DHId
-        #         get_DHEmail = vwAtKWE.query.filter_by(EmployeeId = next_approver).first()
-        #         if get_DHEmail:
-        #             receiver = get_DHEmail.EmailAddress
-        #     elif approver == "Specific User":
-        #         next_approver = config.ApproverValue
-        #         get_Email = vwAtKWE.query.filter_by(EmployeeId = next_approver).first()
-        #         if get_Email:
-        #             receiver = get_Email.EmailAddress
+            elif approver == "Dynamic Manager":
+                next_approver = DHId
+                get_DHEmail = vwAtKWE.query.filter_by(EmployeeId = next_approver).first()
+                if get_DHEmail:
+                    receiver = get_DHEmail.EmailAddress
+            elif approver == "Specific User":
+                next_approver = config.ApproverValue
+                get_Email = vwAtKWE.query.filter_by(EmployeeId = next_approver).first()
+                if get_Email:
+                    receiver = get_Email.EmailAddress
             
-        # # No next approval level or no valid receiver
-        # if not receiver:
-        #     receiver = "itsupport.kweph@kwe.com"
+        # No next approval level or no valid receiver
+        if not receiver:
+            receiver = "itsupport.kweph@kwe.com"
             
-        #     real_receiver = receiver
-        #     print(real_receiver)
+            real_receiver = receiver
+            print(real_receiver)
 
-        #     if receiver:
+            if receiver:
 
-        #         receiver = real_receiver
-        #         subject = f"ITOSS For Approval [{formatted_date}]"
-        #         html = f"""
-        #             <html>
-        #             <body style="margin:0; padding:0; background-color:#f4f6f9; font-family:Arial, sans-serif;">
-        #                 <table width="100%" cellpadding="0" cellspacing="0" style="padding:30px 0;">
-        #                 <tr>
-        #                     <td align="center">
+                receiver = real_receiver
+                subject = f"ITOSS For Approval [{formatted_date}]"
+                html = f"""
+                    <html>
+                    <body style="margin:0; padding:0; background-color:#f4f6f9; font-family:Arial, sans-serif;">
+                        <table width="100%" cellpadding="0" cellspacing="0" style="padding:30px 0;">
+                        <tr>
+                            <td align="center">
 
-        #                     <table width="600" cellpadding="0" cellspacing="0"
-        #                         style="background:#ffffff; border-radius:10px; overflow:hidden;">
+                            <table width="600" cellpadding="0" cellspacing="0"
+                                style="background:#ffffff; border-radius:10px; overflow:hidden;">
 
-        #                         <!-- Header -->
-        #                         <tr>
-        #                         <td style="background:#1677ff; padding:20px;">
-        #                             <h2 style="margin:0; color:#ffffff; font-size:18px;">
-        #                             IT Support Notification
-        #                             </h2>
-        #                         </td>
-        #                         </tr>
+                                <!-- Header -->
+                                <tr>
+                                <td style="background:#1677ff; padding:20px;">
+                                    <h2 style="margin:0; color:#ffffff; font-size:18px;">
+                                    IT Support Notification
+                                    </h2>
+                                </td>
+                                </tr>
 
-        #                         <!-- Content -->
-        #                         <tr>
-        #                         <td style="padding:25px; color:#333333; font-size:14px; line-height:1.6;">
+                                <!-- Content -->
+                                <tr>
+                                <td style="padding:25px; color:#333333; font-size:14px; line-height:1.6;">
 
-        #                             <p>Hello,</p>
+                                    <p>Hello,</p>
 
-        #                             <p>
-        #                             This is an automated reminder for a pending request in the
-        #                             Information Technology Online Support System.
-        #                             </p>
+                                    <p>
+                                    This is an automated reminder for a pending request in the
+                                    Information Technology Online Support System.
+                                    </p>
 
-        #                             <!-- Request Details -->
-        #                             <table width="100%" cellpadding="0" cellspacing="0"
-        #                                 style="margin:20px 0; border:1px solid #f0f0f0; border-radius:8px;">
+                                    <!-- Request Details -->
+                                    <table width="100%" cellpadding="0" cellspacing="0"
+                                        style="margin:20px 0; border:1px solid #f0f0f0; border-radius:8px;">
 
-        #                                 <tr>
-        #                                     <td colspan="2"
-        #                                         style="background:#fafafa; padding:12px 15px; font-weight:bold; font-size:14px;">
-        #                                         Request Details
-        #                                     </td>
-        #                                 </tr>
+                                        <tr>
+                                            <td colspan="2"
+                                                style="background:#fafafa; padding:12px 15px; font-weight:bold; font-size:14px;">
+                                                Request Details
+                                            </td>
+                                        </tr>
 
-        #                                 <tr>
-        #                                     <td style="padding:12px 15px; width:35%; color:#666;">
-        #                                         Ticket No.
-        #                                     </td>
-        #                                     <td style="padding:12px 15px; font-weight:600;">
-        #                                         {ticket_no}
-        #                                     </td>
-        #                                 </tr>
+                                        <tr>
+                                            <td style="padding:12px 15px; width:35%; color:#666;">
+                                                Ticket No.
+                                            </td>
+                                            <td style="padding:12px 15px; font-weight:600;">
+                                                {ticket_no}
+                                            </td>
+                                        </tr>
 
                                         
-        #                                 <tr>
-        #                                     <td style="padding:12px 15px; color:#666;">
-        #                                         Requestor Name
-        #                                     </td>
-        #                                     <td style="padding:12px 15px;">
-        #                                         {current_username}
-        #                                     </td>
-        #                                 </tr>
+                                        <tr>
+                                            <td style="padding:12px 15px; color:#666;">
+                                                Requestor Name
+                                            </td>
+                                            <td style="padding:12px 15px;">
+                                                {current_username}
+                                            </td>
+                                        </tr>
 
-        #                                 <tr style="background:#fcfcfc;">
-        #                                     <td style="padding:12px 15px; color:#666;">
-        #                                         Status
-        #                                     </td>
-        #                                     <td style="padding:12px 15px;">
-        #                                         <span style="
-        #                                             background:#fff7e6;
-        #                                             color:#d48806;
-        #                                             padding:4px 10px;
-        #                                             border-radius:20px;
-        #                                             font-size:12px;
-        #                                             font-weight:bold;
-        #                                         ">
-        #                                             {status}
-        #                                         </span>
-        #                                     </td>
-        #                                 </tr>
+                                        <tr style="background:#fcfcfc;">
+                                            <td style="padding:12px 15px; color:#666;">
+                                                Status
+                                            </td>
+                                            <td style="padding:12px 15px;">
+                                                <span style="
+                                                    background:#fff7e6;
+                                                    color:#d48806;
+                                                    padding:4px 10px;
+                                                    border-radius:20px;
+                                                    font-size:12px;
+                                                    font-weight:bold;
+                                                ">
+                                                    {status}
+                                                </span>
+                                            </td>
+                                        </tr>
 
-        #                             </table>
+                                    </table>
 
-        #                             <!-- Highlight -->
-        #                             <div style="
-        #                                 background:#f5f8ff;
-        #                                 border-left:4px solid #1677ff;
-        #                                 padding:12px;
-        #                                 margin:20px 0;
-        #                             ">
-        #                                 Please log in to the system to review the request details.
-        #                             </div>
+                                    <!-- Highlight -->
+                                    <div style="
+                                        background:#f5f8ff;
+                                        border-left:4px solid #1677ff;
+                                        padding:12px;
+                                        margin:20px 0;
+                                    ">
+                                        Please log in to the system to review the request details.
+                                    </div>
 
-        #                             <p>
-        #                             This is a system-generated email. Please do not reply directly
-        #                             to this message.
-        #                             </p>
+                                    <p>
+                                    This is a system-generated email. Please do not reply directly
+                                    to this message.
+                                    </p>
 
-        #                             <br/>
+                                    <br/>
 
-        #                             <p>
-        #                             Regards,<br/>
-        #                             <b>IT Support Team</b>
-        #                             </p>
+                                    <p>
+                                    Regards,<br/>
+                                    <b>IT Support Team</b>
+                                    </p>
 
-        #                         </td>
-        #                         </tr>
+                                </td>
+                                </tr>
 
-        #                         <!-- Footer -->
-        #                         <tr>
-        #                         <td style="
-        #                             background:#f0f2f5;
-        #                             padding:15px;
-        #                             text-align:center;
-        #                             font-size:12px;
-        #                             color:#888;
-        #                         ">
-        #                             © 2026 Information Technology Online Support System
-        #                         </td>
-        #                         </tr>
+                                <!-- Footer -->
+                                <tr>
+                                <td style="
+                                    background:#f0f2f5;
+                                    padding:15px;
+                                    text-align:center;
+                                    font-size:12px;
+                                    color:#888;
+                                ">
+                                    © 2026 Information Technology Online Support System
+                                </td>
+                                </tr>
 
-        #                     </table>
+                            </table>
 
-        #                     </td>
-        #                 </tr>
-        #                 </table>
+                            </td>
+                        </tr>
+                        </table>
 
-        #             </body>
-        #             </html>
-        #             """
-        #         send_email(receiver, subject, html)
+                    </body>
+                    </html>
+                    """
+                send_email(receiver, subject, html)
 
         return {
             "message": "Ticket created successfully",
@@ -575,7 +574,7 @@ def update_Ticket():
 
             ticket = Tickets.query.filter(Tickets.TicketNumber == ticket_no).first()
             if ticket:
-                ticket.DateModified = formatted_datentime
+                ticket.DateModified = now_ph
             
             db.session.commit()
             return jsonify({"message": "Ticket details successfully updated!"}), 200
@@ -700,9 +699,9 @@ def resendTicket():
                         receiver = get_Email.EmailAddress
 
             if receiver:
-                mensahe = f"Sent a follow-up [{formatted_date}] to {receiver}"
+                mensahe = f"Sent a follow-up [{today_ph}] to {receiver}"
                 receiver = "reginamaye.banadera@kwe.com"
-                subject = f"Follow-up: ITOSS For Approval [{formatted_date}]"
+                subject = f"Follow-up: ITOSS For Approval [{today_ph}]"
                 html = f"""
                     <html>
                     <body style="margin:0; padding:0; background-color:#f4f6f9; font-family:Arial, sans-serif;">
@@ -874,7 +873,7 @@ def cancelRequest():
             return jsonify({"message": "No ticket number found."}), 404
         
         cancel.Status = "Cancelled Request"
-        cancel.DateModified = formatted_datentime
+        cancel.DateModified = now_ph
         db.session.commit()
 
         return jsonify({"message": "Cancellation successfull!"}), 200
@@ -908,7 +907,7 @@ def assignTicket():
                 assign.CurrentLevel = assign.CurrentLevel + 1
 
             assign.AssignedTo = assignedToId
-            assign.DateAssigned = formatted_datentime
+            assign.DateAssigned = now_ph
             assign.Status = status
 
             new_history = TicketApproval(
@@ -934,134 +933,134 @@ def assignTicket():
 
             #------------------EMAIL----------------------
 
-            # subject = f"New Ticket Assigned: {ticket_no}"
-            # html = f"""
-            #         <html>
-            #         <body style="margin:0; padding:0; background-color:#f4f6f9; font-family:Arial, sans-serif;">
+            subject = f"New Ticket Assigned: {ticket_no}"
+            html = f"""
+                    <html>
+                    <body style="margin:0; padding:0; background-color:#f4f6f9; font-family:Arial, sans-serif;">
 
-            #             <table width="100%" cellpadding="0" cellspacing="0" style="padding:30px 0;">
-            #             <tr>
-            #                 <td align="center">
+                        <table width="100%" cellpadding="0" cellspacing="0" style="padding:30px 0;">
+                        <tr>
+                            <td align="center">
 
-            #                 <table width="600" cellpadding="0" cellspacing="0"
-            #                     style="background:#ffffff; border-radius:10px; overflow:hidden;">
+                            <table width="600" cellpadding="0" cellspacing="0"
+                                style="background:#ffffff; border-radius:10px; overflow:hidden;">
 
-            #                     <!-- Header -->
-            #                     <tr>
-            #                     <td style="background:#1677ff; padding:20px;">
-            #                         <h2 style="margin:0; color:#ffffff; font-size:18px;">
-            #                         IT Support Notification
-            #                         </h2>
-            #                     </td>
-            #                     </tr>
+                                <!-- Header -->
+                                <tr>
+                                <td style="background:#1677ff; padding:20px;">
+                                    <h2 style="margin:0; color:#ffffff; font-size:18px;">
+                                    IT Support Notification
+                                    </h2>
+                                </td>
+                                </tr>
 
-            #                     <!-- Content -->
-            #                     <tr>
-            #                     <td style="padding:25px; color:#333333; font-size:14px; line-height:1.6;">
+                                <!-- Content -->
+                                <tr>
+                                <td style="padding:25px; color:#333333; font-size:14px; line-height:1.6;">
 
-            #                         <p>Hello,</p>
+                                    <p>Hello,</p>
 
-            #                         <p>
-            #                             You have been assigned a new ticket by {current_username}.
-            #                         </p>
+                                    <p>
+                                        You have been assigned a new ticket by {current_username}.
+                                    </p>
 
-            #                         <!-- Request Details -->
-            #                         <table width="100%" cellpadding="0" cellspacing="0"
-            #                             style="margin:20px 0; border:1px solid #f0f0f0; border-radius:8px;">
+                                    <!-- Request Details -->
+                                    <table width="100%" cellpadding="0" cellspacing="0"
+                                        style="margin:20px 0; border:1px solid #f0f0f0; border-radius:8px;">
 
-            #                             <tr>
-            #                                 <td colspan="2"
-            #                                     style="background:#fafafa; padding:12px 15px; font-weight:bold; font-size:14px;">
-            #                                     Request Details
-            #                                 </td>
-            #                             </tr>
+                                        <tr>
+                                            <td colspan="2"
+                                                style="background:#fafafa; padding:12px 15px; font-weight:bold; font-size:14px;">
+                                                Request Details
+                                            </td>
+                                        </tr>
 
-            #                             <tr>
-            #                                 <td style="padding:12px 15px; width:35%; color:#666;">
-            #                                     Ticket No.
-            #                                 </td>
-            #                                 <td style="padding:12px 15px; font-weight:600;">
-            #                                     {ticket_no}
-            #                                 </td>
-            #                             </tr>
+                                        <tr>
+                                            <td style="padding:12px 15px; width:35%; color:#666;">
+                                                Ticket No.
+                                            </td>
+                                            <td style="padding:12px 15px; font-weight:600;">
+                                                {ticket_no}
+                                            </td>
+                                        </tr>
 
-            #                             <tr style="background:#fcfcfc;">
-            #                                 <td style="padding:12px 15px; color:#666;">
-            #                                     Request Type
-            #                                 </td>
-            #                                 <td style="padding:12px 15px;">
-            #                                     {category}
-            #                                 </td>
-            #                             </tr>
+                                        <tr style="background:#fcfcfc;">
+                                            <td style="padding:12px 15px; color:#666;">
+                                                Request Type
+                                            </td>
+                                            <td style="padding:12px 15px;">
+                                                {category}
+                                            </td>
+                                        </tr>
 
-            #                             <tr style="background:#fcfcfc;">
-            #                                 <td style="padding:12px 15px; color:#666;">
-            #                                     Status
-            #                                 </td>
-            #                                 <td style="padding:12px 15px;">
-            #                                     <span style="
-            #                                         background:#fff7e6;
-            #                                         color:#d48806;
-            #                                         padding:4px 10px;
-            #                                         border-radius:20px;
-            #                                         font-size:12px;
-            #                                         font-weight:bold;
-            #                                     ">
-            #                                         {status}
-            #                                     </span>
-            #                                 </td>
-            #                             </tr>
+                                        <tr style="background:#fcfcfc;">
+                                            <td style="padding:12px 15px; color:#666;">
+                                                Status
+                                            </td>
+                                            <td style="padding:12px 15px;">
+                                                <span style="
+                                                    background:#fff7e6;
+                                                    color:#d48806;
+                                                    padding:4px 10px;
+                                                    border-radius:20px;
+                                                    font-size:12px;
+                                                    font-weight:bold;
+                                                ">
+                                                    {status}
+                                                </span>
+                                            </td>
+                                        </tr>
 
-            #                         </table>
+                                    </table>
 
-            #                         <!-- Highlight -->
-            #                         <div style="
-            #                             background:#f5f8ff;
-            #                             border-left:4px solid #1677ff;
-            #                             padding:12px;
-            #                             margin:20px 0;
-            #                         ">
-            #                             Please log in to the system to review the request details.
-            #                         </div>
+                                    <!-- Highlight -->
+                                    <div style="
+                                        background:#f5f8ff;
+                                        border-left:4px solid #1677ff;
+                                        padding:12px;
+                                        margin:20px 0;
+                                    ">
+                                        Please log in to the system to review the request details.
+                                    </div>
 
-            #                         <p>
-            #                         This is a system-generated email. Please do not reply directly
-            #                         to this message.
-            #                         </p>
+                                    <p>
+                                    This is a system-generated email. Please do not reply directly
+                                    to this message.
+                                    </p>
 
-            #                         <br/>
+                                    <br/>
 
-            #                         <p>
-            #                         Regards,<br/>
-            #                         <b>IT Support Team</b>
-            #                         </p>
+                                    <p>
+                                    Regards,<br/>
+                                    <b>IT Support Team</b>
+                                    </p>
 
-            #                     </td>
-            #                     </tr>
+                                </td>
+                                </tr>
 
-            #                     <!-- Footer -->
-            #                     <tr>
-            #                     <td style="
-            #                         background:#f0f2f5;
-            #                         padding:15px;
-            #                         text-align:center;
-            #                         font-size:12px;
-            #                         color:#888;
-            #                     ">
-            #                         © 2026 Information Technology Online Support System
-            #                     </td>
-            #                     </tr>
+                                <!-- Footer -->
+                                <tr>
+                                <td style="
+                                    background:#f0f2f5;
+                                    padding:15px;
+                                    text-align:center;
+                                    font-size:12px;
+                                    color:#888;
+                                ">
+                                    © 2026 Information Technology Online Support System
+                                </td>
+                                </tr>
 
-            #                 </table>
+                            </table>
 
-            #                 </td>
-            #             </tr>
-            #             </table>
+                            </td>
+                        </tr>
+                        </table>
 
-            #         </body>
-            #         </html>
-            #         """
-            # send_email(assignedToEmail, subject, html)
+                    </body>
+                    </html>
+                    """
+            send_email(assignedToEmail, subject, html)
 
             return jsonify({"message": "Ticket was successfully assigned!"}), 200
     except Exception as e:
@@ -1087,12 +1086,12 @@ def confirmAssignedTicket():
         if confirm:
             confirm.Status = "On Process"
             confirm.CurrentLevel = confirm.CurrentLevel + 1
-            confirm.DateModified = formatted_datentime
+            confirm.DateModified = now_ph
 
 
             if confirm.RequestType == 17 and current_user == 'K656':
                 confirm.AssignedTo = "K656"
-                confirm.DateAssigned = formatted_datentime
+                confirm.DateAssigned = now_ph
 
             new_history = TicketApproval(
                 TicketNumber = ticket_no,
@@ -1166,7 +1165,7 @@ def processInhouse():
             if ticket:
                 ticket.Status = status
                 ticket.CurrentLevel = ticket.CurrentLevel + 1
-                ticket.DateModified = formatted_datentime
+                ticket.DateModified = now_ph
             
             new_history = TicketApproval(
                 TicketNumber = ticket_no,
@@ -1221,7 +1220,7 @@ def generateFile(ticket_id):
         fields = ticket.custom_fields[0].CustomFields
 
         # DateActed = approval.DateActed 
-        formatted_date
+        today_ph
         # Convert JSON string to Python dict
         fields = json.loads(fields)
         fields["DateActed"] = (approval.DateActed.isoformat() if approval.DateActed else "")
@@ -1397,7 +1396,7 @@ def ticketClose():
 
             ticket.Status = status
             ticket.CurrentLevel = ticket.CurrentLevel + 1
-            ticket.DateModified = formatted_datentime
+            ticket.DateModified = now_ph
             
             new_history = TicketApproval(
                 TicketNumber = ticketno,
@@ -1430,7 +1429,7 @@ def ticketClose():
                     receiver = requestor.EmailAddress
                     subject = f"ITOSS - Ticket Resolved [{ticketno}]"
 
-                    formatted_date = datetime.now().strftime("%B %d, %Y %I:%M %p")
+                    
 
                     safe_ticket_no = escape(str(ticketno))
                     safe_sender_name = escape(str(current_username))
@@ -1501,7 +1500,7 @@ def ticketClose():
                                                             Date
                                                         </td>
                                                         <td style="padding:12px 15px;">
-                                                            {formatted_date}
+                                                            {today_ph}
                                                         </td>
                                                     </tr>
 
@@ -1785,7 +1784,7 @@ def notify_to_email(ticket_no, sender_id, sender_name, message):
                                                 Date
                                             </td>
                                             <td style="padding:12px 15px;">
-                                                {formatted_datentime}
+                                                {now_ph}
                                             </td>
                                         </tr>
 
